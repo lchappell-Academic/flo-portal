@@ -62,15 +62,16 @@
         ];
 
         const WEBINARS_DATA = [
-            { id: 1, title: "Mastering Source Reference for Students", date: "Jan 15, 2024", time: "2:00 PM EST", category: "Training" },
-            { id: 2, title: "2026 Budgeting & Pricing Review", date: "Feb 10, 2024", time: "1:00 PM EST", category: "Strategy" },
-            { id: 3, title: "Films On Demand: New Admin Features", date: "Mar 05, 2024", time: "3:30 PM EST", category: "Update" }
+            { id: 1, title: "Information Literacy – Core: Comprehensive Training", date: "Jan 07, 2026", time: "11:00 AM EST", category: "Higher Ed Training" },
+            { id: 2, title: "Navigating Information Literacy in the Age of AI", date: "On Demand", time: "Anytime", category: "Special Interest" },
+            { id: 3, title: "What’s New in Films On Demand: Higher Ed Content Tour", date: "Feb 18, 2026", time: "1:00 PM EST", category: "Product Update" }
         ];
 
         const App = () => {
             const [activeTab, setActiveTab] = useState('home');
             const [renewals, setRenewals] = useState(INITIAL_RENEWALS);
             const [isSubmitted, setIsSubmitted] = useState(false);
+            const [isSending, setIsSending] = useState(false);
 
             const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
 
@@ -78,13 +79,45 @@
                 setRenewals(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
             };
 
-            const handleSubmit = (e) => {
+            const handleSubmit = async (e) => {
                 e.preventDefault();
-                setIsSubmitted(true);
-                setTimeout(() => setIsSubmitted(false), 4000);
+                setIsSending(true);
+
+                // Collect the form data
+                const formData = new FormData(e.target);
+                
+                // --- INTEGRATION NOTE ---
+                // To receive these emails at lchappell@infobase.com and lsterwerf@infobase.com:
+                // 1. Create a free account at https://formspree.io
+                // 2. Create a "New Form" and add both emails as recipients.
+                // 3. Replace 'YOUR_FORM_ID' below with the ID Formspree gives you.
+                const formspreeEndpoint = "https://formspree.io/f/YOUR_FORM_ID";
+
+                try {
+                    // We only run the actual fetch if you've replaced YOUR_FORM_ID
+                    if (!formspreeEndpoint.includes("YOUR_FORM_ID")) {
+                        const response = await fetch(formspreeEndpoint, {
+                            method: "POST",
+                            body: formData,
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        
+                        if (!response.ok) throw new Error("Failed to send");
+                    } else {
+                        // Simulated wait for demo purposes
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        console.log("Simulated submission to Leo & Lauren");
+                    }
+
+                    setIsSubmitted(true);
+                    setIsSending(false);
+                    setTimeout(() => setIsSubmitted(false), 5000);
+                } catch (error) {
+                    setIsSending(false);
+                    alert("There was an error sending your request. Please try again or email Leo directly.");
+                }
             };
 
-            // Status color mapping for the dropdown
             const getStatusStyles = (status) => {
                 switch(status) {
                     case "Renewed": return "bg-green-100 text-green-700 border-green-200";
@@ -230,7 +263,8 @@
                         {/* WEBINARS TAB */}
                         {activeTab === 'webinars' && (
                             <div className="animate-in space-y-8">
-                                <h2 className="text-3xl font-black">Learning & Training Sessions</h2>
+                                <h2 className="text-3xl font-black">Higher Ed Learning & Training</h2>
+                                <p className="text-slate-500 -mt-4">Access specialized training sessions and product tours designed specifically for college campuses.</p>
                                 <div className="grid md:grid-cols-3 gap-8">
                                     {WEBINARS_DATA.map((webinar) => (
                                         <div key={webinar.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group hover:border-blue-300 transition-all">
@@ -239,12 +273,12 @@
                                                     <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase">
                                                         {webinar.category}
                                                     </span>
-                                                    <div className="text-slate-300 group-hover:text-blue-400 transition-colors"><Icon name="calendar-days" size={24} /></div>
+                                                    <div className="text-slate-300 group-hover:text-blue-400 transition-colors"><Icon name="graduation-cap" size={24} /></div>
                                                 </div>
                                                 <h3 className="text-xl font-black mb-4 leading-tight">{webinar.title}</h3>
                                                 <div className="space-y-3 pt-4 border-t border-slate-100">
                                                     <div className="flex items-center gap-2 text-slate-500 text-sm font-semibold">
-                                                        <Icon name="clock" size={16} /> {webinar.date} at {webinar.time}
+                                                        <Icon name="clock" size={16} /> {webinar.date} {webinar.time !== "Anytime" ? `at ${webinar.time}` : ""}
                                                     </div>
                                                 </div>
                                             </div>
@@ -253,6 +287,12 @@
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                                <div className="mt-8 bg-blue-50 border border-blue-100 p-6 rounded-[2rem] text-center">
+                                    <p className="text-blue-800 font-bold mb-4 italic">"Our mission is to empower Higher Ed librarians with the skills to drive student success."</p>
+                                    <a href="https://infobase.com/learning-training/" target="_blank" className="text-blue-700 font-black text-sm flex items-center justify-center gap-2 hover:underline">
+                                        Browse the Full Training Archive <Icon name="external-link" size={14} />
+                                    </a>
                                 </div>
                             </div>
                         )}
@@ -299,6 +339,7 @@
                                                 </div>
                                                 <h3 className="text-3xl font-black mb-4">Request Sent</h3>
                                                 <p className="text-slate-500 max-w-sm">We've received your inquiry. Leo or Lauren will be in touch within 24 hours.</p>
+                                                <button onClick={() => setIsSubmitted(false)} className="mt-6 text-blue-600 font-bold hover:underline">Send another request</button>
                                             </div>
                                         ) : (
                                             <form onSubmit={handleSubmit} className="space-y-6">
@@ -309,24 +350,29 @@
                                                 <div className="grid md:grid-cols-2 gap-6">
                                                     <div className="space-y-2">
                                                         <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Your Name</label>
-                                                        <input required type="text" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Enter name" />
+                                                        <input name="name" required type="text" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Enter name" />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Campus Email</label>
-                                                        <input required type="email" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="campus@edu" />
+                                                        <input name="email" required type="email" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="campus@edu" />
                                                     </div>
                                                 </div>
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Message or Feedback</label>
                                                     <textarea 
+                                                        name="message"
                                                         required 
                                                         rows="4"
                                                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                                        placeholder="How can Leo and Lauren help today?"
+                                                        placeholder="How may Leo and Lauren assist you today?"
                                                     />
                                                 </div>
-                                                <button type="submit" className="w-full bg-blue-700 text-white py-5 rounded-3xl font-black text-lg shadow-xl shadow-blue-200 hover:bg-blue-800 hover:scale-[1.01] transition-all flex items-center justify-center gap-3">
-                                                    Submit Request <Icon name="send" size={20} />
+                                                <button 
+                                                    type="submit" 
+                                                    disabled={isSending}
+                                                    className={`w-full bg-blue-700 text-white py-5 rounded-3xl font-black text-lg shadow-xl shadow-blue-200 hover:bg-blue-800 hover:scale-[1.01] transition-all flex items-center justify-center gap-3 ${isSending ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                                >
+                                                    {isSending ? 'Sending...' : 'Submit Request'} <Icon name="send" size={20} />
                                                 </button>
                                             </form>
                                         )}
