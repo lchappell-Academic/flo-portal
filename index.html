@@ -1,142 +1,161 @@
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>FLO - Infobase Customer Portal</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <!-- React and Babel for browser-side execution -->
-        <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-        <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-        <!-- Lucide Icons -->
-        <script src="https://unpkg.com/lucide@latest"></script>
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-            body { font-family: 'Inter', sans-serif; }
-            .animate-in { animation: fadeIn 0.5s ease-out; }
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        </style>
-    </head>
-    <body class="bg-slate-50">
-        <div id="root"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLO - Infobase Customer Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React and Babel for browser-side execution -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .animate-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
 
-        <script type="text/babel">
-            const { useState, useEffect, useMemo } = React;
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
 
-            // --- Configuration ---
-            // To enable AI features on your live site, get a key from https://aistudio.google.com/
-            const apiKey = ""; 
-            const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
+        // --- Configuration ---
+        // To enable AI features on your live site, get a key from https://aistudio.google.com/
+        const apiKey = ""; 
+        const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
 
-            // --- Shared Components & Icons ---
-            const Icon = ({ name, size = 24, className = "" }) => {
-                useEffect(() => {
-                    if (window.lucide) window.lucide.createIcons();
-                }, [name]);
-                return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        // --- Shared Components & Icons ---
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [name]);
+            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        };
+
+        // --- Data ---
+        const RENEWALS_DATA = [
+            { id: 1, institution: "Wentworth Institute of Technology", product: "Credo Reference", status: "Active", date: "2024-06-30" },
+            { id: 2, institution: "Emmanuel College", product: "Films On Demand", status: "Pending", date: "2024-02-15" },
+            { id: 3, institution: "Simmons University", product: "Source Reference", status: "Active", date: "2024-08-01" },
+            { id: 4, institution: "MassArt", product: "Access Video On Demand", status: "At Risk", date: "2024-01-20" },
+            { id: 5, institution: "Mass. College of Pharmacy", product: "Nursing Collection", status: "Active", date: "2024-09-12" },
+        ];
+
+        const WEBINARS_DATA = [
+            { id: 1, title: "Mastering Source Reference for Students", date: "Nov 15, 2023", time: "2:00 PM EST", category: "Training" },
+            { id: 2, title: "New Features in Films On Demand", date: "Dec 05, 2023", time: "1:00 PM EST", category: "Update" },
+            { id: 3, title: "Information Literacy in the AI Era", date: "Jan 12, 2024", time: "3:30 PM EST", category: "Thought Leadership" }
+        ];
+
+        const RESOURCES_DATA = [
+            { title: "Health Research Collection", description: "Expanded content for allied health and nursing programs.", type: "New Launch" },
+            { title: "AI Literacy Course Modules", description: "Interactive modules for library instruction sessions.", type: "Update" },
+            { title: "2024 Consortium Benefit Guide", description: "Summary of FLO-exclusive pricing and enhancements.", type: "Document" }
+        ];
+
+        // --- API Logic ---
+        const callGemini = async (prompt, systemInstruction = "") => {
+            if (!apiKey) throw new Error("API Key Missing");
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] }
+            };
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response.";
+        };
+
+        // --- Main App ---
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('home');
+            const [message, setMessage] = useState("");
+            const [isPolishing, setIsPolishing] = useState(false);
+            const [aiInsights, setAiInsights] = useState({});
+            const [loadingInsight, setLoadingInsight] = useState(null);
+            const [isSubmitted, setIsSubmitted] = useState(false);
+
+            const handlePolish = async () => {
+                if (!message) return alert("Please enter a message first.");
+                if (!apiKey) return alert("AI features require a Gemini API Key. Please add it to the code.");
+                
+                setIsPolishing(true);
+                try {
+                    const result = await callGemini(`Rewrite professionally: ${message}`, "Professional Assistant for Library Managers");
+                    setMessage(result.trim());
+                } catch (e) { 
+                    alert("AI Error: Check if your API Key is correct."); 
+                } finally { 
+                    setIsPolishing(false); 
+                }
             };
 
-            // --- Data ---
-            const RENEWALS_DATA = [
-                { id: 1, institution: "Wentworth Institute of Technology", product: "Credo Reference", status: "Active", date: "2024-06-30" },
-                { id: 2, institution: "Emmanuel College", product: "Films On Demand", status: "Pending", date: "2024-02-15" },
-                { id: 3, institution: "Simmons University", product: "Source Reference", status: "Active", date: "2024-08-01" },
-                { id: 4, institution: "MassArt", product: "Access Video On Demand", status: "At Risk", date: "2024-01-20" },
-                { id: 5, institution: "MCPHS University", product: "Nursing Collection", status: "Active", date: "2024-09-12" },
-            ];
-
-            const WEBINARS_DATA = [
-                { id: 1, title: "Mastering Source Reference for Students", date: "Nov 15, 2023", time: "2:00 PM EST", category: "Training" },
-                { id: 2, title: "New Features in Films On Demand", date: "Dec 05, 2023", time: "1:00 PM EST", category: "Update" },
-                { id: 3, title: "Information Literacy in the AI Era", date: "Jan 12, 2024", time: "3:30 PM EST", category: "Thought Leadership" }
-            ];
-
-            const RESOURCES_DATA = [
-                { title: "Health Research Collection", description: "Expanded content for allied health and nursing programs.", type: "New Launch" },
-                { title: "AI Literacy Course Modules", description: "Interactive modules for library instruction sessions.", type: "Update" },
-                { title: "2024 Consortium Benefit Guide", description: "Summary of FLO-exclusive pricing and enhancements.", type: "Document" }
-            ];
-
-            // --- API Logic ---
-            const callGemini = async (prompt, systemInstruction = "") => {
-                if (!apiKey) throw new Error("API Key Missing");
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-                const payload = {
-                    contents: [{ parts: [{ text: prompt }] }],
-                    systemInstruction: { parts: [{ text: systemInstruction }] }
-                };
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await response.json();
-                return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response.";
+            const generateInsight = async (i, t, d) => {
+                if (!apiKey) return alert("AI features require a Gemini API Key. Please add it to the code.");
+                setLoadingInsight(i);
+                try {
+                    const res = await callGemini(`Briefly explain the benefit of ${t} for a library consortium: ${d}`, "Library Benefits Expert");
+                    setAiInsights(prev => ({ ...prev, [i]: res }));
+                } catch (e) { 
+                    alert("AI Error: Could not generate insight."); 
+                } finally { 
+                    setLoadingInsight(null); 
+                }
             };
 
-            // --- Main App ---
-            const App = () => {
-                const [activeTab, setActiveTab] = useState('home');
-                const [message, setMessage] = useState("");
-                const [isPolishing, setIsPolishing] = useState(false);
-                const [aiInsights, setAiInsights] = useState({});
-                const [loadingInsight, setLoadingInsight] = useState(null);
-                const [formStatus, setFormStatus] = useState(null);
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                setIsSubmitted(true);
+                setTimeout(() => {
+                    setIsSubmitted(false);
+                    setMessage("");
+                }, 4000);
+            };
 
-                const handlePolish = async () => {
-                    if (!message || !apiKey) return alert("Please enter a message and ensure an API key is set in the code.");
-                    setIsPolishing(true);
-                    try {
-                        const result = await callGemini(`Rewrite professionally: ${message}`, "Professional Assistant");
-                        setMessage(result.trim());
-                    } catch (e) { alert("AI Error: Check API Key"); }
-                    finally { setIsPolishing(false); }
-                };
+            return (
+                <div className="min-h-screen flex flex-col">
+                    <nav className="bg-white border-b sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <span className="text-xl font-black text-blue-800">INFOBASE</span>
+                            <div className="h-6 w-px bg-slate-200"></div>
+                            <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">FLO PORTAL</span>
+                        </div>
+                        <div className="hidden md:flex gap-4">
+                            {['home', 'renewals', 'webinars', 'resources', 'contact'].map(tab => (
+                                <button key={tab} onClick={() => setActiveTab(tab)} className={`capitalize px-3 py-1 font-semibold rounded-lg ${activeTab === tab ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50'}`}>
+                                    {tab}
+                                </button>
+                            ))}
+                        </div>
+                    </nav>
 
-                const generateInsight = async (i, t, d) => {
-                    if (!apiKey) return alert("API Key Required in code to use AI.");
-                    setLoadingInsight(i);
-                    try {
-                        const res = await callGemini(`Benefits of ${t} for libraries: ${d}`, "Library Expert");
-                        setAiInsights(prev => ({ ...prev, [i]: res }));
-                    } catch (e) { alert("AI Error"); }
-                    finally { setLoadingInsight(null); }
-                };
-
-                return (
-                    <div className="min-h-screen flex flex-col">
-                        <nav className="bg-white border-b sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <span className="text-xl font-black text-blue-800">INFOBASE</span>
-                                <div className="h-6 w-px bg-slate-200"></div>
-                                <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">FLO PORTAL</span>
-                            </div>
-                            <div className="hidden md:flex gap-4">
-                                {['home', 'renewals', 'webinars', 'resources', 'contact'].map(tab => (
-                                    <button key={tab} onClick={() => setActiveTab(tab)} className={`capitalize px-3 py-1 font-semibold rounded-lg ${activeTab === tab ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50'}`}>
-                                        {tab}
-                                    </button>
-                                ))}
-                            </div>
-                        </nav>
-
-                        <main className="flex-grow max-w-7xl w-full mx-auto p-6 md:p-10">
-                            {activeTab === 'home' && (
-                                <div className="animate-in">
-                                    <div className="bg-gradient-to-br from-blue-800 to-blue-600 p-12 rounded-[2rem] text-white shadow-xl relative overflow-hidden">
-                                        <h1 className="text-5xl font-black mb-4">Supporting FLO Libraries</h1>
-                                        <p className="text-xl text-blue-100 max-w-xl mb-8">Consolidated management for your Infobase resources and upcoming renewals.</p>
-                                        <div className="flex gap-4">
-                                            <button onClick={() => setActiveTab('renewals')} className="bg-white text-blue-800 px-8 py-3 rounded-full font-bold shadow-lg">View Renewals</button>
-                                            <button onClick={() => setActiveTab('contact')} className="bg-blue-500 text-white px-8 py-3 rounded-full font-bold border border-blue-400">Contact Leo</button>
-                                        </div>
+                    <main className="flex-grow max-w-7xl w-full mx-auto p-6 md:p-10">
+                        {activeTab === 'home' && (
+                            <div className="animate-in">
+                                <div className="bg-gradient-to-br from-blue-800 to-blue-600 p-12 rounded-[2rem] text-white shadow-xl relative overflow-hidden">
+                                    <h1 className="text-5xl font-black mb-4 leading-tight">Supporting FLO Libraries</h1>
+                                    <p className="text-xl text-blue-100 max-w-xl mb-8">Consolidated management for your Infobase resources, upcoming training sessions, and consortia renewals.</p>
+                                    <div className="flex gap-4">
+                                        <button onClick={() => setActiveTab('renewals')} className="bg-white text-blue-800 px-8 py-3 rounded-full font-bold shadow-lg hover:bg-blue-50 transition-all">View Renewals</button>
+                                        <button onClick={() => setActiveTab('contact')} className="bg-blue-500 text-white px-8 py-3 rounded-full font-bold border border-blue-400 hover:bg-blue-400 transition-all">Contact Leo</button>
                                     </div>
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            {activeTab === 'renewals' && (
-                                <div className="animate-in bg-white rounded-3xl border shadow-sm overflow-hidden">
+                        {activeTab === 'renewals' && (
+                            <div className="animate-in">
+                                <h2 className="text-3xl font-black mb-6">Renewal Tracker</h2>
+                                <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
                                     <table className="w-full text-left">
                                         <thead className="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
                                             <tr>
@@ -162,10 +181,38 @@
                                         </tbody>
                                     </table>
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            {activeTab === 'resources' && (
-                                <div className="animate-in grid md:grid-cols-3 gap-6">
+                        {activeTab === 'webinars' && (
+                            <div className="animate-in">
+                                <h2 className="text-3xl font-black mb-6">Upcoming Training</h2>
+                                <div className="grid md:grid-cols-3 gap-6">
+                                    {WEBINARS_DATA.map((webinar) => (
+                                        <div key={webinar.id} className="bg-white rounded-3xl border shadow-sm flex flex-col overflow-hidden">
+                                            <div className="p-8">
+                                                <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[10px] font-bold uppercase mb-4 inline-block">
+                                                    {webinar.category}
+                                                </span>
+                                                <h3 className="text-xl font-bold mb-4">{webinar.title}</h3>
+                                                <div className="text-slate-500 text-sm space-y-2">
+                                                    <p>📅 {webinar.date}</p>
+                                                    <p>⏰ {webinar.time}</p>
+                                                </div>
+                                            </div>
+                                            <div className="mt-auto p-6 bg-slate-50 border-t">
+                                                <a href="https://infobase.com/learning-training/" target="_blank" className="block text-center bg-blue-700 text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-800 transition-all">Register Now</a>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'resources' && (
+                            <div className="animate-in">
+                                <h2 className="text-3xl font-black mb-6">New Resources</h2>
+                                <div className="grid md:grid-cols-3 gap-6">
                                     {RESOURCES_DATA.map((res, i) => (
                                         <div key={i} className="bg-white p-8 rounded-3xl border shadow-sm flex flex-col">
                                             <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded w-max mb-4">{res.type}</span>
@@ -177,65 +224,83 @@
                                                 </div>
                                             ) : (
                                                 <button onClick={() => generateInsight(i, res.title, res.description)} className="flex items-center justify-center gap-2 w-full py-2 bg-slate-50 hover:bg-slate-100 text-blue-700 font-bold rounded-xl text-sm transition-all">
-                                                    {loadingInsight === i ? "..." : "✨ AI Benefit Insight"}
+                                                    {loadingInsight === i ? "Generating..." : "✨ AI Benefit Insight"}
                                                 </button>
                                             )}
                                         </div>
                                     ))}
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            {activeTab === 'contact' && (
-                                <div className="animate-in grid md:grid-cols-2 gap-12">
-                                    <div className="bg-white p-10 rounded-3xl border shadow-lg">
-                                        <h2 className="text-2xl font-black mb-6">Send Feedback</h2>
-                                        <div className="space-y-4">
+                        {activeTab === 'contact' && (
+                            <div className="animate-in grid md:grid-cols-2 gap-12">
+                                <div className="bg-white p-10 rounded-3xl border shadow-lg">
+                                    {isSubmitted ? (
+                                        <div className="h-full flex flex-col items-center justify-center text-center animate-in">
+                                            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
+                                                <i data-lucide="check" className="w-8 h-8"></i>
+                                            </div>
+                                            <h3 className="text-2xl font-bold mb-2">Message Sent!</h3>
+                                            <p className="text-slate-500">Thank you for your feedback. We will get back to you shortly.</p>
+                                        </div>
+                                    ) : (
+                                        <form onSubmit={handleSubmit} className="space-y-4">
+                                            <h2 className="text-2xl font-black mb-6">Send Feedback</h2>
                                             <div className="flex justify-between items-end">
-                                                <label className="text-xs font-bold text-slate-400 uppercase">Your Message</label>
-                                                <button onClick={handlePolish} className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                                                    {isPolishing ? "..." : "✨ Polish with AI"}
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-tighter">Your Message</label>
+                                                <button type="button" onClick={handlePolish} className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-all">
+                                                    {isPolishing ? "Working..." : "✨ Polish with AI"}
                                                 </button>
                                             </div>
                                             <textarea 
-                                                className="w-full border rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none min-h-[150px]"
+                                                className="w-full border border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none min-h-[150px] transition-all"
                                                 value={message}
                                                 onChange={(e) => setMessage(e.target.value)}
-                                                placeholder="Tell us what you think..."
+                                                placeholder="Tell us what you think or ask a question..."
+                                                required
                                             />
-                                            <button className="w-full bg-blue-700 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-800 transition-all">
+                                            <button type="submit" className="w-full bg-blue-700 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-800 transition-all">
                                                 Submit Form
                                             </button>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-6">
-                                        <div className="bg-white p-8 rounded-3xl border shadow-sm">
-                                            <h3 className="font-bold text-lg mb-1">Leo Chappell</h3>
-                                            <p className="text-blue-600 text-sm font-bold mb-4">Customer Success Manager</p>
-                                            <div className="text-slate-500 text-sm space-y-2">
-                                                <p>📧 lchappell@infobase.com</p>
-                                                <p>📞 212-896-4212</p>
+                                        </form>
+                                    )}
+                                </div>
+                                <div className="space-y-6">
+                                    <div className="bg-white p-8 rounded-3xl border shadow-sm">
+                                        <h3 className="font-bold text-xl mb-1">Leo Chappell</h3>
+                                        <p className="text-blue-600 text-sm font-bold mb-6">Customer Success Manager</p>
+                                        <div className="text-slate-500 text-sm space-y-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-slate-50 rounded-lg text-blue-600"><i data-lucide="mail" className="w-4 h-4"></i></div>
+                                                <span>lchappell@infobase.com</span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-slate-50 rounded-lg text-blue-600"><i data-lucide="phone" className="w-4 h-4"></i></div>
+                                                <span>212-896-4212</span>
                                             </div>
                                         </div>
-                                        <div className="bg-orange-50 border border-orange-100 p-6 rounded-2xl">
-                                            <p className="text-orange-800 text-sm font-medium">✨ This portal is AI-enhanced to help you articulate your needs better. Use the polish button to refine your requests!</p>
-                                        </div>
+                                    </div>
+                                    <div className="bg-orange-50 border border-orange-100 p-6 rounded-2xl">
+                                        <p className="text-orange-800 text-sm font-medium italic">"My goal is to ensure every FLO library has the tools and support needed for academic success. Reach out anytime!"</p>
                                     </div>
                                 </div>
-                            )}
-                        </main>
-
-                        <footer className="bg-slate-900 text-slate-500 p-10 mt-10">
-                            <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-                                <span className="text-white font-black">INFOBASE x FLO</span>
-                                <p className="text-xs">© 2023 Infobase Consortia Management</p>
                             </div>
-                        </footer>
-                    </div>
-                );
-            };
+                        )}
+                    </main>
 
-            const root = ReactDOM.createRoot(document.getElementById('root'));
-            root.render(<App />);
-        </script>
-    </body>
-    </html>
+                    <footer className="bg-slate-900 text-slate-500 p-10 mt-10">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                            <span className="text-white font-black text-xl tracking-tighter">INFOBASE <span className="text-blue-500 text-sm ml-2">x FLO</span></span>
+                            <p className="text-xs">© 2023 Infobase Consortia Management. All rights reserved.</p>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
