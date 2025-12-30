@@ -16,122 +16,101 @@
         body { font-family: 'Inter', sans-serif; }
         .animate-in { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Custom select styling to remove default arrow in some browsers and add custom one */
+        .status-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='C19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1rem;
+            padding-right: 1.5rem;
+        }
     </style>
 </head>
-<body class="bg-slate-50">
+<body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect } = React;
 
-        // --- Configuration ---
-        // To enable AI features on your live site, get a key from https://aistudio.google.com/
-        const apiKey = ""; 
-        const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
-
-        // --- Shared Components & Icons ---
-        const Icon = ({ name, size = 24, className = "" }) => {
+        // --- Shared Components ---
+        const Icon = ({ name, size = 20, className = "" }) => {
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
             }, [name]);
             return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
         };
 
-        // --- Data ---
-        const RENEWALS_DATA = [
-            { id: 1, institution: "Wentworth Institute of Technology", product: "Credo Reference", status: "Active", date: "2024-06-30" },
-            { id: 2, institution: "Emmanuel College", product: "Films On Demand", status: "Pending", date: "2024-02-15" },
-            { id: 3, institution: "Simmons University", product: "Source Reference", status: "Active", date: "2024-08-01" },
-            { id: 4, institution: "MassArt", product: "Access Video On Demand", status: "At Risk", date: "2024-01-20" },
-            { id: 5, institution: "Mass. College of Pharmacy", product: "Nursing Collection", status: "Active", date: "2024-09-12" },
+        // --- Initial Data ---
+        const INITIAL_RENEWALS = [
+            { id: 1, institution: "Wentworth Institute of Technology", product: "Credo Reference: Academic Core", price2025: 8500, status: "" },
+            { id: 2, institution: "Emmanuel College", product: "Films On Demand: Master Academic", price2025: 12400, status: "" },
+            { id: 3, institution: "Simmons University", product: "Source Reference", price2025: 6200, status: "" },
+            { id: 4, institution: "MassArt", product: "Access Video On Demand", price2025: 9800, status: "" },
+            { id: 5, institution: "Mass. College of Pharmacy", product: "Nursing Collection", price2025: 11200, status: "" },
+            { id: 6, institution: "Fenway Library Organization", product: "Bloom's Literature", price2025: 5500, status: "" },
+        ];
+
+        const SOLUTIONS = [
+            { title: "Higher Education", desc: "Digital resources to support academic research, student success, and curriculum-aligned media.", icon: "graduation-cap" },
+            { title: "K-12 Education", desc: "Empowering teachers and students with grade-appropriate streaming video and databases.", icon: "book-open" },
+            { title: "Public Libraries", desc: "Engaging the community with lifelong learning resources, health content, and DIY media.", icon: "library" },
+            { title: "Professional Development", desc: "Comprehensive training and skill-building platforms for educators and library staff.", icon: "award" },
+            { title: "Information Literacy", desc: "Foundational tools to teach critical thinking and research skills in the digital age.", icon: "search" },
+            { title: "Health & Wellness", desc: "Trusted medical and wellness content for nursing programs and community health.", icon: "heart-pulse" }
         ];
 
         const WEBINARS_DATA = [
-            { id: 1, title: "Mastering Source Reference for Students", date: "Nov 15, 2023", time: "2:00 PM EST", category: "Training" },
-            { id: 2, title: "New Features in Films On Demand", date: "Dec 05, 2023", time: "1:00 PM EST", category: "Update" },
-            { id: 3, title: "Information Literacy in the AI Era", date: "Jan 12, 2024", time: "3:30 PM EST", category: "Thought Leadership" }
+            { id: 1, title: "Mastering Source Reference for Students", date: "Jan 15, 2024", time: "2:00 PM EST", category: "Training" },
+            { id: 2, title: "2026 Budgeting & Pricing Review", date: "Feb 10, 2024", time: "1:00 PM EST", category: "Strategy" },
+            { id: 3, title: "Films On Demand: New Admin Features", date: "Mar 05, 2024", time: "3:30 PM EST", category: "Update" }
         ];
 
-        const RESOURCES_DATA = [
-            { title: "Health Research Collection", description: "Expanded content for allied health and nursing programs.", type: "New Launch" },
-            { title: "AI Literacy Course Modules", description: "Interactive modules for library instruction sessions.", type: "Update" },
-            { title: "2024 Consortium Benefit Guide", description: "Summary of FLO-exclusive pricing and enhancements.", type: "Document" }
-        ];
-
-        // --- API Logic ---
-        const callGemini = async (prompt, systemInstruction = "") => {
-            if (!apiKey) throw new Error("API Key Missing");
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] }
-            };
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
-            return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response.";
-        };
-
-        // --- Main App ---
         const App = () => {
             const [activeTab, setActiveTab] = useState('home');
-            const [message, setMessage] = useState("");
-            const [isPolishing, setIsPolishing] = useState(false);
-            const [aiInsights, setAiInsights] = useState({});
-            const [loadingInsight, setLoadingInsight] = useState(null);
+            const [renewals, setRenewals] = useState(INITIAL_RENEWALS);
             const [isSubmitted, setIsSubmitted] = useState(false);
 
-            const handlePolish = async () => {
-                if (!message) return alert("Please enter a message first.");
-                if (!apiKey) return alert("AI features require a Gemini API Key. Please add it to the code.");
-                
-                setIsPolishing(true);
-                try {
-                    const result = await callGemini(`Rewrite professionally: ${message}`, "Professional Assistant for Library Managers");
-                    setMessage(result.trim());
-                } catch (e) { 
-                    alert("AI Error: Check if your API Key is correct."); 
-                } finally { 
-                    setIsPolishing(false); 
-                }
-            };
+            const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
 
-            const generateInsight = async (i, t, d) => {
-                if (!apiKey) return alert("AI features require a Gemini API Key. Please add it to the code.");
-                setLoadingInsight(i);
-                try {
-                    const res = await callGemini(`Briefly explain the benefit of ${t} for a library consortium: ${d}`, "Library Benefits Expert");
-                    setAiInsights(prev => ({ ...prev, [i]: res }));
-                } catch (e) { 
-                    alert("AI Error: Could not generate insight."); 
-                } finally { 
-                    setLoadingInsight(null); 
-                }
+            const handleStatusChange = (id, newStatus) => {
+                setRenewals(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
             };
 
             const handleSubmit = (e) => {
                 e.preventDefault();
                 setIsSubmitted(true);
-                setTimeout(() => {
-                    setIsSubmitted(false);
-                    setMessage("");
-                }, 4000);
+                setTimeout(() => setIsSubmitted(false), 4000);
+            };
+
+            // Status color mapping for the dropdown
+            const getStatusStyles = (status) => {
+                switch(status) {
+                    case "Renewed": return "bg-green-100 text-green-700 border-green-200";
+                    case "Quote Sent": return "bg-yellow-100 text-yellow-700 border-yellow-200";
+                    case "Negotiating": return "bg-orange-100 text-orange-700 border-orange-200";
+                    case "Declined": return "bg-red-100 text-red-700 border-red-200";
+                    default: return "bg-slate-50 text-slate-400 border-slate-200";
+                }
             };
 
             return (
                 <div className="min-h-screen flex flex-col">
-                    <nav className="bg-white border-b sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
+                    {/* Header Navigation */}
+                    <nav className="bg-white border-b sticky top-0 z-50 px-6 py-4 flex flex-col md:flex-row justify-between items-center shadow-sm gap-4">
                         <div className="flex items-center gap-3">
-                            <span className="text-xl font-black text-blue-800">INFOBASE</span>
+                            <a href="https://infobase.com" target="_blank" className="text-2xl font-black text-blue-900 tracking-tighter hover:opacity-80 transition-opacity">INFOBASE</a>
                             <div className="h-6 w-px bg-slate-200"></div>
                             <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">FLO PORTAL</span>
                         </div>
-                        <div className="hidden md:flex gap-4">
-                            {['home', 'renewals', 'webinars', 'resources', 'contact'].map(tab => (
-                                <button key={tab} onClick={() => setActiveTab(tab)} className={`capitalize px-3 py-1 font-semibold rounded-lg ${activeTab === tab ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50'}`}>
+                        <div className="flex gap-2 md:gap-4 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+                            {['home', 'renewals', 'webinars', 'contact'].map(tab => (
+                                <button 
+                                    key={tab} 
+                                    onClick={() => setActiveTab(tab)} 
+                                    className={`capitalize px-4 py-1.5 font-bold rounded-full text-sm transition-all whitespace-nowrap ${activeTab === tab ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                                >
                                     {tab}
                                 </button>
                             ))}
@@ -139,69 +118,138 @@
                     </nav>
 
                     <main className="flex-grow max-w-7xl w-full mx-auto p-6 md:p-10">
+                        
+                        {/* HOME TAB */}
                         {activeTab === 'home' && (
-                            <div className="animate-in">
-                                <div className="bg-gradient-to-br from-blue-800 to-blue-600 p-12 rounded-[2rem] text-white shadow-xl relative overflow-hidden">
-                                    <h1 className="text-5xl font-black mb-4 leading-tight">Supporting FLO Libraries</h1>
-                                    <p className="text-xl text-blue-100 max-w-xl mb-8">Consolidated management for your Infobase resources, upcoming training sessions, and consortia renewals.</p>
-                                    <div className="flex gap-4">
-                                        <button onClick={() => setActiveTab('renewals')} className="bg-white text-blue-800 px-8 py-3 rounded-full font-bold shadow-lg hover:bg-blue-50 transition-all">View Renewals</button>
-                                        <button onClick={() => setActiveTab('contact')} className="bg-blue-500 text-white px-8 py-3 rounded-full font-bold border border-blue-400 hover:bg-blue-400 transition-all">Contact Leo</button>
+                            <div className="animate-in space-y-16">
+                                {/* Hero */}
+                                <div className="bg-gradient-to-br from-blue-900 to-blue-700 p-8 md:p-16 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
+                                    <div className="relative z-10 max-w-2xl">
+                                        <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">Empowering Fenway Library Organization</h1>
+                                        <p className="text-xl text-blue-100 mb-10 leading-relaxed">
+                                            Your consolidated hub for resource management, training registration, and strategic 2026 planning. 
+                                            Explore Infobase solutions tailored for FLO members.
+                                        </p>
+                                        <div className="flex flex-wrap gap-4">
+                                            <button onClick={() => setActiveTab('renewals')} className="bg-white text-blue-900 px-8 py-4 rounded-full font-black shadow-lg hover:scale-105 transition-transform">2026 Pricing Review</button>
+                                            <button onClick={() => setActiveTab('contact')} className="bg-blue-500/30 border border-blue-400 text-white px-8 py-4 rounded-full font-black hover:bg-blue-500/50 transition-all">Support Center</button>
+                                        </div>
                                     </div>
+                                    <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
                                 </div>
+
+                                {/* Infobase Solutions Grid */}
+                                <section>
+                                    <div className="flex items-center gap-3 mb-8">
+                                        <div className="h-8 w-1 bg-blue-600 rounded-full"></div>
+                                        <h2 className="text-3xl font-black text-slate-800">Our Comprehensive Solutions</h2>
+                                    </div>
+                                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                        {SOLUTIONS.map((sol, i) => (
+                                            <div key={i} className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
+                                                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                                    <Icon name={sol.icon} size={24} />
+                                                </div>
+                                                <h3 className="text-xl font-black mb-3 text-slate-900">{sol.title}</h3>
+                                                <p className="text-slate-500 text-sm leading-relaxed">{sol.desc}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-12 text-center">
+                                        <a href="https://infobase.com/solution/" target="_blank" className="text-blue-600 font-black hover:underline inline-flex items-center gap-2 transition-all">
+                                            View all Infobase Solutions <Icon name="external-link" size={16} />
+                                        </a>
+                                    </div>
+                                </section>
                             </div>
                         )}
 
+                        {/* RENEWALS TAB */}
                         {activeTab === 'renewals' && (
-                            <div className="animate-in">
-                                <h2 className="text-3xl font-black mb-6">Renewal Tracker</h2>
-                                <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
-                                            <tr>
-                                                <th className="p-6">Institution</th>
-                                                <th className="p-6">Product</th>
-                                                <th className="p-6">Expiration</th>
-                                                <th className="p-6">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {RENEWALS_DATA.map(item => (
-                                                <tr key={item.id} className="hover:bg-slate-50">
-                                                    <td className="p-6 font-bold">{item.institution}</td>
-                                                    <td className="p-6 text-slate-600">{item.product}</td>
-                                                    <td className="p-6 text-slate-500">{item.date}</td>
-                                                    <td className="p-6">
-                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${item.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                                                            {item.status}
-                                                        </span>
-                                                    </td>
+                            <div className="animate-in space-y-8">
+                                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-3xl font-black mb-2">FLO Renewals & 2026 Projections</h2>
+                                        <p className="text-slate-500">Proposed pricing for 2026 including a standard 4% annual adjustment.</p>
+                                    </div>
+                                    <div className="bg-orange-50 border border-orange-100 px-4 py-2 rounded-xl text-orange-800 text-xs font-bold">
+                                        ⚠️ Budget Planning: +4% applied for 2026
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest border-b border-slate-100">
+                                                <tr>
+                                                    <th className="p-6">Institution</th>
+                                                    <th className="p-6">Product Description</th>
+                                                    <th className="p-6">2025 Pricing</th>
+                                                    <th className="p-6 text-blue-700 bg-blue-50/30">2026 Estimated (+4%)</th>
+                                                    <th className="p-6 text-center">Determination Status</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {renewals.map(item => (
+                                                    <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                                        <td className="p-6 font-black text-slate-800">{item.institution}</td>
+                                                        <td className="p-6 text-slate-600 text-sm">{item.product}</td>
+                                                        <td className="p-6 font-semibold text-slate-500">{formatCurrency(item.price2025)}</td>
+                                                        <td className="p-6 font-black text-blue-700 bg-blue-50/30">{formatCurrency(item.price2025 * 1.04)}</td>
+                                                        <td className="p-6 text-center">
+                                                            <select 
+                                                                value={item.status} 
+                                                                onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                                                                className={`status-select outline-none cursor-pointer transition-all border px-4 py-1.5 rounded-full text-[10px] font-black uppercase appearance-none ${getStatusStyles(item.status)}`}
+                                                            >
+                                                                <option value="">Pending Determination</option>
+                                                                <option value="Renewed">Renewed</option>
+                                                                <option value="Quote Sent">Quote Sent</option>
+                                                                <option value="Negotiating">Negotiating</option>
+                                                                <option value="Declined">Declined</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                            <tfoot className="bg-slate-900 text-white">
+                                                <tr>
+                                                    <td colSpan="2" className="p-6 font-black uppercase text-xs">Consortia Total</td>
+                                                    <td className="p-6 font-bold">{formatCurrency(renewals.reduce((acc, curr) => acc + curr.price2025, 0))}</td>
+                                                    <td className="p-6 font-black text-blue-400">{formatCurrency(renewals.reduce((acc, curr) => acc + (curr.price2025 * 1.04), 0))}</td>
+                                                    <td className="p-6"></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
                                 </div>
+                                <p className="text-xs text-slate-400 italic">* Note: 2026 pricing is for budgeting purposes. Determination status is currently pending coordination with colleges.</p>
                             </div>
                         )}
 
+                        {/* WEBINARS TAB */}
                         {activeTab === 'webinars' && (
-                            <div className="animate-in">
-                                <h2 className="text-3xl font-black mb-6">Upcoming Training</h2>
-                                <div className="grid md:grid-cols-3 gap-6">
+                            <div className="animate-in space-y-8">
+                                <h2 className="text-3xl font-black">Learning & Training Sessions</h2>
+                                <div className="grid md:grid-cols-3 gap-8">
                                     {WEBINARS_DATA.map((webinar) => (
-                                        <div key={webinar.id} className="bg-white rounded-3xl border shadow-sm flex flex-col overflow-hidden">
+                                        <div key={webinar.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group hover:border-blue-300 transition-all">
                                             <div className="p-8">
-                                                <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[10px] font-bold uppercase mb-4 inline-block">
-                                                    {webinar.category}
-                                                </span>
-                                                <h3 className="text-xl font-bold mb-4">{webinar.title}</h3>
-                                                <div className="text-slate-500 text-sm space-y-2">
-                                                    <p>📅 {webinar.date}</p>
-                                                    <p>⏰ {webinar.time}</p>
+                                                <div className="flex justify-between items-start mb-6">
+                                                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase">
+                                                        {webinar.category}
+                                                    </span>
+                                                    <div className="text-slate-300 group-hover:text-blue-400 transition-colors"><Icon name="calendar-days" size={24} /></div>
+                                                </div>
+                                                <h3 className="text-xl font-black mb-4 leading-tight">{webinar.title}</h3>
+                                                <div className="space-y-3 pt-4 border-t border-slate-100">
+                                                    <div className="flex items-center gap-2 text-slate-500 text-sm font-semibold">
+                                                        <Icon name="clock" size={16} /> {webinar.date} at {webinar.time}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="mt-auto p-6 bg-slate-50 border-t">
-                                                <a href="https://infobase.com/learning-training/" target="_blank" className="block text-center bg-blue-700 text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-800 transition-all">Register Now</a>
+                                            <div className="mt-auto p-6 bg-slate-50 border-t border-slate-100">
+                                                <a href="https://infobase.com/learning-training/" target="_blank" className="block text-center bg-blue-600 text-white py-4 rounded-2xl font-black text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">Register Today</a>
                                             </div>
                                         </div>
                                     ))}
@@ -209,90 +257,100 @@
                             </div>
                         )}
 
-                        {activeTab === 'resources' && (
-                            <div className="animate-in">
-                                <h2 className="text-3xl font-black mb-6">New Resources</h2>
-                                <div className="grid md:grid-cols-3 gap-6">
-                                    {RESOURCES_DATA.map((res, i) => (
-                                        <div key={i} className="bg-white p-8 rounded-3xl border shadow-sm flex flex-col">
-                                            <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded w-max mb-4">{res.type}</span>
-                                            <h3 className="text-xl font-bold mb-2">{res.title}</h3>
-                                            <p className="text-slate-500 text-sm mb-6 flex-grow">{res.description}</p>
-                                            {aiInsights[i] ? (
-                                                <div className="bg-blue-50 p-4 rounded-xl text-xs text-blue-800 mb-4 animate-in italic">
-                                                    {aiInsights[i]}
-                                                </div>
-                                            ) : (
-                                                <button onClick={() => generateInsight(i, res.title, res.description)} className="flex items-center justify-center gap-2 w-full py-2 bg-slate-50 hover:bg-slate-100 text-blue-700 font-bold rounded-xl text-sm transition-all">
-                                                    {loadingInsight === i ? "Generating..." : "✨ AI Benefit Insight"}
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
+                        {/* CONTACT TAB */}
                         {activeTab === 'contact' && (
-                            <div className="animate-in grid md:grid-cols-2 gap-12">
-                                <div className="bg-white p-10 rounded-3xl border shadow-lg">
-                                    {isSubmitted ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-center animate-in">
-                                            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
-                                                <i data-lucide="check" className="w-8 h-8"></i>
-                                            </div>
-                                            <h3 className="text-2xl font-bold mb-2">Message Sent!</h3>
-                                            <p className="text-slate-500">Thank you for your feedback. We will get back to you shortly.</p>
-                                        </div>
-                                    ) : (
-                                        <form onSubmit={handleSubmit} className="space-y-4">
-                                            <h2 className="text-2xl font-black mb-6">Send Feedback</h2>
-                                            <div className="flex justify-between items-end">
-                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-tighter">Your Message</label>
-                                                <button type="button" onClick={handlePolish} className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-all">
-                                                    {isPolishing ? "Working..." : "✨ Polish with AI"}
-                                                </button>
-                                            </div>
-                                            <textarea 
-                                                className="w-full border border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none min-h-[150px] transition-all"
-                                                value={message}
-                                                onChange={(e) => setMessage(e.target.value)}
-                                                placeholder="Tell us what you think or ask a question..."
-                                                required
-                                            />
-                                            <button type="submit" className="w-full bg-blue-700 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-800 transition-all">
-                                                Submit Form
-                                            </button>
-                                        </form>
-                                    )}
-                                </div>
-                                <div className="space-y-6">
-                                    <div className="bg-white p-8 rounded-3xl border shadow-sm">
-                                        <h3 className="font-bold text-xl mb-1">Leo Chappell</h3>
-                                        <p className="text-blue-600 text-sm font-bold mb-6">Customer Success Manager</p>
-                                        <div className="text-slate-500 text-sm space-y-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-slate-50 rounded-lg text-blue-600"><i data-lucide="mail" className="w-4 h-4"></i></div>
-                                                <span>lchappell@infobase.com</span>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-slate-50 rounded-lg text-blue-600"><i data-lucide="phone" className="w-4 h-4"></i></div>
-                                                <span>212-896-4212</span>
+                            <div className="animate-in grid lg:grid-cols-3 gap-12">
+                                <div className="lg:col-span-1 space-y-8">
+                                    <h2 className="text-4xl font-black text-slate-900 leading-tight">Your Support Team</h2>
+                                    
+                                    {/* Leo Card */}
+                                    <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -z-0 group-hover:scale-110 transition-transform"></div>
+                                        <div className="relative z-10">
+                                            <h3 className="text-xl font-black text-slate-900 mb-1">Leo Chappell</h3>
+                                            <p className="text-blue-600 text-sm font-bold mb-6">Customer Success Manager</p>
+                                            <div className="space-y-4 text-slate-600 font-semibold text-sm">
+                                                <a href="mailto:lchappell@infobase.com" className="flex items-center gap-3 hover:text-blue-600 transition-colors underline decoration-blue-100 underline-offset-4"><Icon name="mail" size={16} className="text-blue-400" /> lchappell@infobase.com</a>
+                                                <a href="tel:2128964212" className="flex items-center gap-3 hover:text-blue-600 transition-colors"><Icon name="phone" size={16} className="text-blue-400" /> 212-896-4212</a>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="bg-orange-50 border border-orange-100 p-6 rounded-2xl">
-                                        <p className="text-orange-800 text-sm font-medium italic">"My goal is to ensure every FLO library has the tools and support needed for academic success. Reach out anytime!"</p>
+
+                                    {/* Lauren Sterwerf Card */}
+                                    <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -z-0 group-hover:scale-110 transition-transform"></div>
+                                        <div className="relative z-10">
+                                            <h3 className="text-xl font-black text-slate-900 mb-1">Lauren Sterwerf</h3>
+                                            <p className="text-blue-600 text-sm font-bold mb-6">Director of Customer Success</p>
+                                            <div className="space-y-4 text-slate-600 font-semibold text-sm">
+                                                <a href="mailto:lsterwerf@infobase.com" className="flex items-center gap-3 hover:text-blue-600 transition-colors underline decoration-blue-100 underline-offset-4"><Icon name="mail" size={16} className="text-blue-400" /> lsterwerf@infobase.com</a>
+                                                <a href="tel:2128964000" className="flex items-center gap-3 hover:text-blue-600 transition-colors"><Icon name="phone" size={16} className="text-blue-400" /> 212-896-4000</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="lg:col-span-2">
+                                    <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-xl">
+                                        {isSubmitted ? (
+                                            <div className="py-20 flex flex-col items-center justify-center text-center animate-in">
+                                                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
+                                                    <Icon name="check" size={40} />
+                                                </div>
+                                                <h3 className="text-3xl font-black mb-4">Request Sent</h3>
+                                                <p className="text-slate-500 max-w-sm">We've received your inquiry. Leo or Lauren will be in touch within 24 hours.</p>
+                                            </div>
+                                        ) : (
+                                            <form onSubmit={handleSubmit} className="space-y-6">
+                                                <div className="mb-10">
+                                                    <h2 className="text-3xl font-black mb-2">Connect with Infobase</h2>
+                                                    <p className="text-slate-500">Need specific 2026 pricing details or product demos?</p>
+                                                </div>
+                                                <div className="grid md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Your Name</label>
+                                                        <input required type="text" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Enter name" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Campus Email</label>
+                                                        <input required type="email" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="campus@edu" />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Message or Feedback</label>
+                                                    <textarea 
+                                                        required 
+                                                        rows="4"
+                                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                                        placeholder="How can Leo and Lauren help today?"
+                                                    />
+                                                </div>
+                                                <button type="submit" className="w-full bg-blue-700 text-white py-5 rounded-3xl font-black text-lg shadow-xl shadow-blue-200 hover:bg-blue-800 hover:scale-[1.01] transition-all flex items-center justify-center gap-3">
+                                                    Submit Request <Icon name="send" size={20} />
+                                                </button>
+                                            </form>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         )}
                     </main>
 
-                    <footer className="bg-slate-900 text-slate-500 p-10 mt-10">
-                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-                            <span className="text-white font-black text-xl tracking-tighter">INFOBASE <span className="text-blue-500 text-sm ml-2">x FLO</span></span>
-                            <p className="text-xs">© 2023 Infobase Consortia Management. All rights reserved.</p>
+                    {/* Simple Professional Footer */}
+                    <footer className="bg-slate-900 text-slate-500 p-12 mt-20">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+                            <div className="flex items-center gap-3">
+                                <a href="https://infobase.com" target="_blank" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                                    <span className="text-white font-black text-2xl tracking-tighter">INFOBASE</span>
+                                    <span className="text-blue-500 font-bold">x FLO</span>
+                                </a>
+                            </div>
+                            <div className="flex gap-8 text-xs font-bold uppercase tracking-widest">
+                                <a href="https://infobase.com" target="_blank" className="hover:text-white transition-colors">Infobase Home</a>
+                                <a href="https://infobase.com/privacy-policy/" target="_blank" className="hover:text-white transition-colors">Privacy</a>
+                                <a href="https://infobase.com/terms-of-use/" target="_blank" className="hover:text-white transition-colors">Terms of Use</a>
+                            </div>
+                            <p className="text-[10px]">© 2023 Infobase Consortia Management. All rights reserved.</p>
                         </div>
                     </footer>
                 </div>
