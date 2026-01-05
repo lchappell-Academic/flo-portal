@@ -1,14 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  LayoutDashboard, 
-  CheckCircle2, 
-  Calendar, 
-  Mail, 
-  Phone, 
-  ExternalLink, 
-  ChevronRight, 
-  Send, 
-  Info, 
+import React, { useState } from "react";
+import {
+  Calendar,
+  Mail,
+  Phone,
+  ChevronRight,
+  Send,
+  Info,
   AlertCircle,
   GraduationCap,
   BookOpen,
@@ -21,483 +18,96 @@ import {
   FileText,
   Clock,
   Video,
-  FileSearch,
-  MessageSquare,
-  XCircle
-} from 'lucide-react';
+  FileSearch
+} from "lucide-react";
 
-/**
- * CONFIGURATION: 
- * To make the form work, replace 'YOUR_FORM_ID' with the ID provided by Formspree.io
- * Note: Lauren is CC'd automatically via the hidden input field in the form below.
- */
-const FORMSPREE_ID = "YOUR_FORM_ID"; 
+/* ================= CONFIG ================= */
+const FORMSPREE_ID = "YOUR_FORM_ID";
 
+/* ================= DATA ================= */
 const INITIAL_RENEWALS = [
   { id: 1, institution: "Wentworth Institute of Technology", product: "Credo Reference: Academic Core", price2025: 8500, status: "" },
   { id: 2, institution: "Emmanuel College", product: "Films On Demand: Master Academic", price2025: 12400, status: "" },
   { id: 3, institution: "Simmons University", product: "Source Reference", price2025: 6200, status: "" },
   { id: 4, institution: "MassArt", product: "Access Video On Demand", price2025: 9800, status: "" },
   { id: 5, institution: "Mass. College of Pharmacy", product: "Nursing Collection", price2025: 11200, status: "" },
-  { id: 6, institution: "Fenway Library Organization", product: "Bloom's Literature", price2025: 5500, status: "" },
+  { id: 6, institution: "Fenway Library Organization", product: "Bloom's Literature", price2025: 5500, status: "" }
 ];
 
 const SOLUTIONS = [
-  { title: "Higher Education", desc: "Digital resources to support academic research, student success, and curriculum-aligned media.", icon: GraduationCap, link: "https://infobase.com/solution/higher-education/" },
-  { title: "K-12 Education", desc: "Empowering teachers and students with grade-appropriate streaming video and databases.", icon: BookOpen, link: "https://infobase.com/solution/k-12-schools/" },
-  { title: "Public Libraries", desc: "Engaging the community with lifelong learning resources, health content, and DIY media.", icon: Library, link: "https://infobase.com/solution/public-libraries/" },
-  { title: "Professional Development", desc: "Comprehensive training and skill-building platforms for educators and library staff.", icon: Award, link: "https://infobase.com/solution/professional-development/" },
-  { title: "Information Literacy", desc: "Foundational tools to teach critical thinking and research skills in the digital age.", icon: Search, link: "https://infobase.com/learning-training/" },
-  { title: "Health & Wellness", desc: "Trusted medical and wellness content for nursing programs and community health.", icon: HeartPulse, link: "https://infobase.com/health-wellness-databases/" }
+  { title: "Higher Education", desc: "Digital resources for academic research and curriculum support.", icon: GraduationCap, link: "https://infobase.com/solution/higher-education/" },
+  { title: "K-12 Education", desc: "Streaming video and databases for classrooms.", icon: BookOpen, link: "https://infobase.com/solution/k-12-schools/" },
+  { title: "Public Libraries", desc: "Community-focused learning and wellness content.", icon: Library, link: "https://infobase.com/solution/public-libraries/" },
+  { title: "Professional Development", desc: "Training platforms for educators and staff.", icon: Award, link: "https://infobase.com/solution/professional-development/" },
+  { title: "Information Literacy", desc: "Critical thinking & research skill tools.", icon: Search, link: "https://infobase.com/learning-training/" },
+  { title: "Health & Wellness", desc: "Trusted medical and wellness databases.", icon: HeartPulse, link: "https://infobase.com/health-wellness-databases/" }
 ];
 
-const FAQS = [
-  { q: "How is the 2026 pricing calculated?", a: "2026 projections are based on your 2025 renewal rate with a standard 4% consortium adjustment applied." },
-  { q: "Can we request trial access to new databases?", a: "Yes. Use the contact form to request a 30-day trial for any database listed in the Solutions section." },
-  { q: "Who handles technical support for MassArt and Simmons?", a: "Leo Chappell is your primary Customer Success Manager for all account-related needs, supported by Lauren Sterwerf." }
-];
+/* ================= STATIC TAILWIND MAP ================= */
+const ICON_STYLES = {
+  blue: "bg-blue-50 text-blue-600",
+  red: "bg-red-50 text-red-600",
+  emerald: "bg-emerald-50 text-emerald-600",
+  indigo: "bg-indigo-50 text-indigo-600"
+};
 
-const WEBINARS_DATA = [
-  { id: 1, title: "Information Literacy – Core: Comprehensive Training", date: "Jan 07, 2026", time: "11:00 AM EST", category: "Higher Ed Training" },
-  { id: 2, title: "Navigating Information Literacy in the Age of AI", date: "On Demand", time: "Anytime", category: "Special Interest" },
-  { id: 3, title: "What’s New in Films On Demand: Higher Ed Content Tour", date: "Feb 18, 2026", time: "1:00 PM EST", category: "Product Update" }
-];
-
-const App = () => {
-  const [activeTab, setActiveTab] = useState('home');
+/* ================= APP ================= */
+export default function App() {
+  const [activeTab, setActiveTab] = useState("home");
   const [renewals, setRenewals] = useState(INITIAL_RENEWALS);
-  const [solutionSearch, setSolutionSearch] = useState('');
+  const [solutionSearch, setSolutionSearch] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
-  const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
-
-  const handleStatusChange = (id, newStatus) => {
-    setRenewals(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
-  };
-
-  const filteredSolutions = SOLUTIONS.filter(s => 
-    s.title.toLowerCase().includes(solutionSearch.toLowerCase()) || 
-    s.desc.toLowerCase().includes(solutionSearch.toLowerCase())
-  );
+  const formatCurrency = (num) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(num);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (FORMSPREE_ID === "YOUR_FORM_ID") {
+      setIsSubmitted(true);
+      return;
+    }
+
     setIsSending(true);
-
-    const form = e.target;
-    const formData = new FormData(form);
-
     try {
-      const response = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
-        method: 'POST',
-        body: formData,
-        headers: { 'Accept': 'application/json' }
+      await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+        method: "POST",
+        body: new FormData(e.target),
+        headers: { Accept: "application/json" }
       });
-
-      if (response.ok || FORMSPREE_ID === "YOUR_FORM_ID") {
-        setIsSubmitted(true);
-        form.reset();
-      } else {
-        throw new Error("Submission failed");
-      }
-    } catch (err) {
-      if (FORMSPREE_ID === "YOUR_FORM_ID") {
-        setIsSubmitted(true);
-      } else {
-        alert("There was an error routing your request. Please email lchappell@infobase.com directly.");
-      }
+      setIsSubmitted(true);
+      e.target.reset();
+    } catch {
+      alert("Form submission failed. Please email directly.");
     } finally {
       setIsSending(false);
-      setTimeout(() => setIsSubmitted(false), 8000);
     }
   };
 
-  const getStatusStyles = (status) => {
-    switch(status) {
-      case "Renewed": return "bg-green-100 text-green-700 border-green-200";
-      case "Quote Sent": return "bg-yellow-100 text-yellow-700 border-yellow-200";
-      case "Negotiating": return "bg-orange-100 text-orange-700 border-orange-200";
-      case "Declined": return "bg-red-100 text-red-700 border-red-200";
-      default: return "bg-white text-slate-400 border-slate-200";
-    }
-  };
+  const filteredSolutions = SOLUTIONS.filter(
+    (s) =>
+      s.title.toLowerCase().includes(solutionSearch.toLowerCase()) ||
+      s.desc.toLowerCase().includes(solutionSearch.toLowerCase())
+  );
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
-      {/* Header Navigation */}
-      <nav className="bg-white border-b sticky top-0 z-50 px-6 py-4 flex flex-col md:flex-row justify-between items-center shadow-sm gap-4">
-        <div className="flex items-center gap-3">
-          <a href="https://infobase.com" target="_blank" rel="noreferrer" className="text-2xl font-black text-blue-900 tracking-tighter hover:opacity-80 transition-opacity uppercase">INFOBASE</a>
-          <div className="h-6 w-px bg-slate-200" />
-          <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">FLO PORTAL</span>
-        </div>
-        <div className="flex gap-2 md:gap-4 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-          {['home', 'renewals', 'webinars', 'contact'].map(tab => (
-            <button 
-              key={tab} 
-              onClick={() => setActiveTab(tab)} 
-              className={`capitalize px-5 py-2 font-bold rounded-full text-sm transition-all whitespace-nowrap ${activeTab === tab ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      {/* NAV */}
+      <nav className="bg-white border-b sticky top-0 z-50 px-6 py-4 flex gap-4">
+        {["home", "renewals", "webinars", "contact"].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-full font-bold ${
+              activeTab === tab ? "bg-blue-600 text-white" : "text-slate-500"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
       </nav>
 
-      <main className="flex-grow max-w-7xl w-full mx-auto p-6 md:p-10">
-        
-        {/* HOME VIEW */}
-        {activeTab === 'home' && (
-          <div className="animate-in space-y-16">
-            <div className="bg-gradient-to-br from-blue-900 to-blue-700 p-8 md:p-16 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
-              <div className="relative z-10 max-w-2xl">
-                <div className="flex items-center gap-2 mb-6 bg-blue-500/30 w-max px-4 py-1.5 rounded-full border border-blue-400/50">
-                   <Clock size={14} className="text-blue-100" />
-                   <span className="text-[10px] font-black uppercase tracking-widest text-blue-100">Portal Updated: Jan 2026</span>
-                </div>
-                <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight tracking-tight uppercase">Empowering FLO Success</h1>
-                <p className="text-xl text-blue-100 mb-10 leading-relaxed font-medium">
-                  A dedicated portal for the Fenway Library Organization. Manage renewals, access specialized training, and explore high-impact library solutions.
-                </p>
-                <div className="flex flex-wrap gap-4">
-                  <button onClick={() => setActiveTab('renewals')} className="bg-white text-blue-900 px-8 py-4 rounded-full font-black shadow-lg hover:scale-105 transition-transform uppercase text-sm flex items-center gap-2">
-                    Review 2026 Pricing <ChevronRight size={18} />
-                  </button>
-                  <button onClick={() => setActiveTab('contact')} className="bg-blue-500/30 border border-blue-400 text-white px-8 py-4 rounded-full font-black hover:bg-blue-500/50 transition-all uppercase text-sm">Direct Support</button>
-                </div>
-              </div>
-              <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-            </div>
-
-            {/* Quick-Access Resource Hub */}
-            <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {[
-                    { label: "Request a Trial", icon: FileSearch, color: "blue" },
-                    { label: "Technical Issue", icon: AlertCircle, color: "red" },
-                    { label: "Billing Inquiry", icon: FileText, color: "emerald" },
-                    { label: "Book a Demo", icon: Video, color: "indigo" }
-                ].map((item, idx) => (
-                    <button 
-                        key={idx}
-                        onClick={() => setActiveTab('contact')}
-                        className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col items-center text-center group"
-                    >
-                        <div className={`w-12 h-12 bg-${item.color}-50 text-${item.color}-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                            <item.icon size={24} />
-                        </div>
-                        <span className="font-black text-xs uppercase tracking-widest text-slate-700">{item.label}</span>
-                    </button>
-                ))}
-            </section>
-
-            <div className="grid md:grid-cols-3 gap-8">
-               <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm">
-                  <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6"><FileText size={24} /></div>
-                  <h3 className="font-black uppercase text-sm mb-4 tracking-tight">Consortium Benefits</h3>
-                  <ul className="space-y-3 text-sm text-slate-500 font-medium">
-                    <li className="flex items-center gap-2 text-blue-600 font-bold"><Check size={16} /> 4% Capped Annual Adjustment</li>
-                    <li className="flex items-center gap-2"><Check size={16} /> Centralized Billing & Support</li>
-                    <li className="flex items-center gap-2"><Check size={16} /> Dedicated CSM Support</li>
-                  </ul>
-               </div>
-               <div className="md:col-span-2 bg-slate-900 p-8 rounded-[2rem] text-white">
-                  <div className="flex items-center gap-2 mb-6 text-indigo-400">
-                    <HelpCircle size={20} />
-                    <h3 className="font-black uppercase text-sm tracking-widest">Common Questions</h3>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-8">
-                    {FAQS.map((faq, i) => (
-                      <div key={i} className="space-y-2">
-                        <p className="font-black text-indigo-200 text-xs uppercase">{faq.q}</p>
-                        <p className="text-slate-400 text-sm leading-relaxed">{faq.a}</p>
-                      </div>
-                    ))}
-                  </div>
-               </div>
-            </div>
-
-            <section>
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-1.5 bg-blue-600 rounded-full" />
-                  <h2 className="text-3xl font-black text-slate-800 tracking-tight uppercase">Infobase Solutions</h2>
-                </div>
-                <div className="relative w-full md:w-72">
-                   <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                   <input 
-                    type="text" 
-                    placeholder="Search resources..." 
-                    className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                    value={solutionSearch}
-                    onChange={(e) => setSolutionSearch(e.target.value)}
-                   />
-                </div>
-              </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredSolutions.map((sol, i) => (
-                  <a key={i} href={sol.link} target="_blank" rel="noreferrer" className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
-                    <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                      <sol.icon size={28} />
-                    </div>
-                    <h3 className="text-xl font-black mb-3 text-slate-900 uppercase tracking-tight">{sol.title}</h3>
-                    <p className="text-slate-500 text-sm leading-relaxed">{sol.desc}</p>
-                    <div className="mt-6 text-blue-600 font-bold text-sm flex items-center gap-2 group-hover:gap-4 transition-all">
-                      Explore Product Details <ChevronRight size={14} />
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </section>
-          </div>
-        )}
-
-        {/* RENEWALS VIEW */}
-        {activeTab === 'renewals' && (
-          <div className="animate-in space-y-8">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-              <div>
-                <h2 className="text-4xl font-black mb-2 tracking-tight uppercase">FLO 2026 Renewal Tracker</h2>
-                <p className="text-slate-500 font-medium italic">Calculated based on 2025 pricing plus a standard 4% adjustment.</p>
-              </div>
-              <div className="bg-orange-50 border border-orange-100 px-5 py-3 rounded-2xl text-orange-800 text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                <Info size={14} /> Budget Planning: +4% Applied
-              </div>
-            </div>
-
-            <div className="bg-white rounded-[3rem] border border-slate-200 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest border-b border-slate-100">
-                    <tr>
-                      <th className="p-8">Institution</th>
-                      <th className="p-8">Product Description</th>
-                      <th className="p-8">2025 Pricing</th>
-                      <th className="p-8 text-blue-700 bg-blue-50/30">2026 Estimate (+4%)</th>
-                      <th className="p-8 text-center">Determination Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {renewals.map(item => (
-                      <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="p-8 font-black text-slate-900">{item.institution}</td>
-                        <td className="p-8 text-slate-600 text-sm font-medium">{item.product}</td>
-                        <td className="p-8 font-semibold text-slate-400">{formatCurrency(item.price2025)}</td>
-                        <td className="p-8 font-black text-blue-700 bg-blue-50/30 text-lg tracking-tighter">{formatCurrency(item.price2025 * 1.04)}</td>
-                        <td className="p-8 text-center">
-                          <select 
-                            value={item.status} 
-                            onChange={(e) => handleStatusChange(item.id, e.target.value)}
-                            className={`outline-none cursor-pointer transition-all border px-5 py-2.5 rounded-full text-[10px] font-black uppercase shadow-sm ${getStatusStyles(item.status)}`}
-                          >
-                            <option value="">Determination Pending</option>
-                            <option value="Renewed">Renewed</option>
-                            <option value="Quote Sent">Quote Sent</option>
-                            <option value="Negotiating">Negotiating</option>
-                            <option value="Declined">Declined</option>
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-slate-900 text-white">
-                    <tr>
-                      <td colSpan="2" className="p-8 font-black uppercase text-xs tracking-widest">Consortia Aggregate Total</td>
-                      <td className="p-8 font-bold text-slate-400">{formatCurrency(renewals.reduce((acc, curr) => acc + curr.price2025, 0))}</td>
-                      <td className="p-8 font-black text-blue-400 text-xl tracking-tighter">{formatCurrency(renewals.reduce((acc, curr) => acc + (curr.price2025 * 1.04), 0))}</td>
-                      <td className="p-8" />
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-            <p className="text-xs text-slate-400 italic flex items-center gap-2">
-              <AlertCircle size={14} /> Official 2026 quotes will be distributed directly via Lauren Sterwerf or Leo Chappell.
-            </p>
-          </div>
-        )}
-
-        {/* WEBINARS VIEW */}
-        {activeTab === 'webinars' && (
-          <div className="animate-in space-y-8">
-            <h2 className="text-4xl font-black tracking-tight uppercase">Higher Ed Learning & Training</h2>
-            <p className="text-slate-500 font-medium -mt-4 text-lg">Specialized product tours and pedagogical training for FLO campuses.</p>
-            <div className="grid md:grid-cols-3 gap-8">
-              {WEBINARS_DATA.map((webinar) => (
-                <div key={webinar.id} className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col group hover:border-blue-300 transition-all">
-                  <div className="p-10">
-                    <div className="flex justify-between items-start mb-8">
-                      <span className="bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
-                        {webinar.category}
-                      </span>
-                      <div className="text-slate-200 group-hover:text-blue-400 transition-colors"><GraduationCap size={32} /></div>
-                    </div>
-                    <h3 className="text-2xl font-black mb-6 leading-tight tracking-tight uppercase">{webinar.title}</h3>
-                    <div className="space-y-4 pt-6 border-t border-slate-100 font-bold text-slate-500 text-sm">
-                      <div className="flex items-center gap-3">
-                        <Calendar size={18} className="text-blue-500" /> {webinar.date}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Clock size={18} className="text-blue-500" /> {webinar.time !== "Anytime" ? webinar.time : "Self-Paced"}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-auto p-8 bg-slate-50 border-t border-slate-100">
-                    <a href="https://infobase.com/learning-training/" target="_blank" rel="noreferrer" className="block text-center bg-blue-600 text-white py-4 rounded-2xl font-black text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 uppercase tracking-widest">Register Session</a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* CONTACT VIEW */}
-        {activeTab === 'contact' && (
-          <div className="animate-in grid lg:grid-cols-3 gap-12">
-            <div className="lg:col-span-1 space-y-8">
-              <h2 className="text-4xl font-black text-slate-900 leading-tight uppercase tracking-tight">Your Support Team</h2>
-              
-              <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -z-0 group-hover:scale-110 transition-transform" />
-                <div className="relative z-10">
-                  <h3 className="text-2xl font-black text-slate-900 mb-1 uppercase tracking-tighter">Leo Chappell</h3>
-                  <p className="text-blue-600 text-sm font-black mb-8 uppercase tracking-widest">Customer Success Manager</p>
-                  <div className="space-y-5 text-slate-600 font-bold text-sm">
-                    <a href="mailto:lchappell@infobase.com" className="flex items-center gap-4 hover:text-blue-600 transition-colors">
-                      <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all"><Mail size={18} /></div>
-                      lchappell@infobase.com
-                    </a>
-                    <a href="tel:2128964212" className="flex items-center gap-4 hover:text-blue-600 transition-colors">
-                      <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all"><Phone size={18} /></div>
-                      212-896-4212
-                    </a>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -z-0 group-hover:scale-110 transition-transform" />
-                <div className="relative z-10">
-                  <h3 className="text-2xl font-black text-slate-900 mb-1 uppercase tracking-tighter">Lauren Sterwerf</h3>
-                  <p className="text-blue-600 text-sm font-black mb-8 uppercase tracking-widest">Director of Customer Success</p>
-                  <div className="space-y-5 text-slate-600 font-bold text-sm">
-                    <a href="mailto:lsterwerf@infobase.com" className="flex items-center gap-4 hover:text-blue-600 transition-colors">
-                      <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all"><Mail size={18} /></div>
-                      lsterwerf@infobase.com
-                    </a>
-                    <a href="tel:2128964000" className="flex items-center gap-4 hover:text-blue-600 transition-colors">
-                      <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all"><Phone size={18} /></div>
-                      212-896-4000
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-2">
-              <div className="bg-white p-12 rounded-[4rem] border border-slate-200 shadow-xl relative overflow-hidden">
-                {isSubmitted ? (
-                  <div className="py-24 flex flex-col items-center justify-center text-center animate-in">
-                    <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-8 shadow-inner">
-                      <Check size={48} />
-                    </div>
-                    <h3 className="text-4xl font-black mb-4 uppercase tracking-tighter">Message Sent</h3>
-                    <p className="text-slate-500 font-medium max-w-sm text-lg">Thank you. Your inquiry has been routed to both Leo and Lauren. Expect a response within 24 hours.</p>
-                    <button onClick={() => setIsSubmitted(false)} className="mt-10 text-blue-600 font-black uppercase text-xs tracking-widest hover:underline">Submit New Request</button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
-                    <div className="mb-12">
-                      <h2 className="text-3xl font-black mb-3 uppercase tracking-tighter">Connect with us</h2>
-                      <p className="text-slate-500 font-medium">Have questions regarding FLO specific pricing or new database access?</p>
-                    </div>
-                    
-                    {/* Formspree hidden fields for direct routing */}
-                    <input type="hidden" name="_subject" value="New FLO Portal Inquiry" />
-                    {/* Routing logic: Primary goes to lchappell via account settings, CC goes to lsterwerf here */}
-                    <input type="hidden" name="_cc" value="lsterwerf@infobase.com" />
-                    
-                    <div className="grid md:grid-cols-2 gap-8">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Full Name</label>
-                        <input name="name" required type="text" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold" placeholder="Your Name" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Email</label>
-                        <input name="email" required type="email" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold" placeholder="your@email.com" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Request Category</label>
-                      <select name="category" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold appearance-none">
-                        <option>2026 Renewal Discussion</option>
-                        <option>Technical Support / Access</option>
-                        <option>Training Request</option>
-                        <option>Invoicing & Billing</option>
-                        <option>New Solution Inquiry</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">How may Leo and Lauren assist you today?</label>
-                      <textarea 
-                        name="message"
-                        required 
-                        rows={5}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold"
-                        placeholder="Please describe your request..."
-                      />
-                    </div>
-                    <button 
-                      type="submit" 
-                      disabled={isSending}
-                      className={`w-full bg-blue-700 text-white py-6 rounded-3xl font-black text-lg shadow-2xl shadow-blue-200 hover:bg-blue-800 hover:scale-[1.01] transition-all flex items-center justify-center gap-4 uppercase tracking-widest ${isSending ? 'opacity-70 cursor-not-allowed' : ''}`}
-                    >
-                      {isSending ? 'Sending...' : 'Send Message'} <Send size={22} />
-                    </button>
-                  </form>
-                )}
-                <div className="absolute bottom-[-10%] right-[-5%] w-64 h-64 bg-slate-50 rounded-full -z-0" />
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-slate-900 text-slate-500 p-16 mt-20">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12">
-          <div className="space-y-6">
-            <a href="https://infobase.com" target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <span className="text-white font-black text-3xl tracking-tighter uppercase">INFOBASE</span>
-              <div className="h-6 w-px bg-slate-700" />
-              <span className="text-blue-500 font-black uppercase tracking-widest text-xs">FLO Partner</span>
-            </a>
-            <p className="max-w-xs text-sm leading-relaxed text-slate-400">Providing high-quality digital resources and dedicated support for the Fenway Library Organization consortia.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-12 md:gap-24">
-            <div className="space-y-4">
-              <h4 className="text-white font-black text-xs uppercase tracking-widest">Resources</h4>
-              <ul className="space-y-3 text-[11px] font-bold uppercase tracking-tighter">
-                <li><a href="https://infobase.com" target="_blank" rel="noreferrer" className="hover:text-blue-400 transition-colors">Infobase Home</a></li>
-                <li><a href="https://infobase.com/learning-training/" target="_blank" rel="noreferrer" className="hover:text-blue-400 transition-colors">Training Hub</a></li>
-                <li><a href="https://infobase.com/solution/higher-education/" target="_blank" rel="noreferrer" className="hover:text-blue-400 transition-colors">Higher Ed</a></li>
-              </ul>
-            </div>
-            <div className="space-y-4">
-              <h4 className="text-white font-black text-xs uppercase tracking-widest">Legal</h4>
-              <ul className="space-y-3 text-[11px] font-bold uppercase tracking-tighter">
-                <li><a href="https://infobase.com/privacy-policy/" target="_blank" rel="noreferrer" className="hover:text-blue-400 transition-colors">Privacy Policy</a></li>
-                <li><a href="https://infobase.com/terms-of-use/" target="_blank" rel="noreferrer" className="hover:text-blue-400 transition-colors">Terms of Use</a></li>
-              </ul>
-            </div>
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-slate-800 text-[10px] font-black uppercase tracking-[0.2em] flex flex-col md:flex-row justify-between items-center gap-4">
-          <p>© 2026 Infobase Consortia Management. All rights reserved.</p>
-        </div>
-      </footer>
-    </div>
-  );
-};
-
-export default App;
+      {/* HOME */}
+      {activeTab === "home" &&
